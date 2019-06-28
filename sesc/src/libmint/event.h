@@ -25,6 +25,7 @@
 #define __event_h
 
 #include <stdlib.h>
+#include <stdint.h>
 
 /* define a type that can hold all machine types */
 typedef union numeric {
