@@ -16,7 +16,7 @@ void EndianPDR(PDR *h);
 void EndianSYMR(SYMR *h);
 void EndianEXTR(EXTR *h);
 
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
 
 #define SWAP_LONG(X) (( ((unsigned long long)SWAP_WORD((uint32_t)((X)>>32))) | \
 								((unsigned long long)SWAP_WORD((uint32_t)(X)))<<32) )

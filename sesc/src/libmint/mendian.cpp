@@ -148,7 +148,7 @@ void EndianFDR(FDR *h)
   h->rfdBase = SWAP_WORD((unsigned)h->rfdBase);
   h->crfd = SWAP_WORD((unsigned)h->crfd);
 	
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
   h->fBigendian = (h->reserved & 0x1) != 0;
   h->fReadin    = (h->reserved & 0x2) != 0;
   h->fMerge     = (h->reserved & 0x4) != 0;
@@ -184,18 +184,14 @@ void EndianPDR(PDR *h)
 
 void EndianSYMR(SYMR *h)
 {
-#ifdef LENDIAN
   uint32_t swaped;
 	
   h->iss = SWAP_WORD((unsigned)h->iss);
   h->value = SWAP_WORD((unsigned)h->value);
 
-  /* I expect that I'll never will understand why I did that.
-     I wish that it works!
-	 */
-
+#ifdef	REVERSE_ENDIAN
   swaped = ((h->st&0x3F) << 26) | ((h->sc&0x1F) << 21) | ((h->reserved&0x1) << 20) | h->index;
-	
+
   h->index    = swaped >> 12;
   h->reserved = (swaped >> 11) & 0x1;
   h->sc = (swaped >> 6) & 0x1F;

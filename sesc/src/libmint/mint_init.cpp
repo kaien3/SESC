@@ -932,11 +932,11 @@ decode_instr(icode_ptr picode, int32_t instr)
 	  picode->args[j] = regfield[j];
         else if (pdesc->regflags[j] & REG1) {
 	  /* ENDIANA TRASH */
-#ifdef LENDIAN
-	  picode->args[j] = regfield[j];
-#else
+#ifdef REVERSE_ENDIAN
 	  /* flip the low order bit of single precision fp regs */
 	  picode->args[j] = (regfield[j] ^ 1);
+#else
+	  picode->args[j] = regfield[j];
 #endif
         } else
 	  picode->args[j] = regfield[j];

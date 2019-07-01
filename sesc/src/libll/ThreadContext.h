@@ -313,7 +313,7 @@ public:
   }
 
   void setREGFromMem(icode_ptr pi, int32_t R, int32_t *addr) {
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
     int32_t val = SWAP_WORD(*addr);
 #else
     int32_t val = *addr;
@@ -327,7 +327,7 @@ public:
   }
   void  setFPFromMem( icode_ptr pi, int32_t R, float *addr) { 
     float *pos = &fp[pi->args[R]];
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
     uint32_t v1;
     v1 = *(uint32_t *)addr;
     v1 = SWAP_WORD(v1);
@@ -371,14 +371,14 @@ public:
     pos[1] = (uint32_t) addr[1];
 #else
     double *pos = (double *) &fp[pi->args[R]];
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
     uint64_t v1;
     v1 = *(uint64_t *)(addr);
     v1 = SWAP_LONG(v1);
     *pos = *(double *)&v1;
 #else
     *pos = *addr;
-#endif // LENDIAN
+#endif // REVERSE_ENDIAN
 #endif // SPARC
   }
 

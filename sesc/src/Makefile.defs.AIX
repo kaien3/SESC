@@ -1,8 +1,9 @@
 #################
 # AIX specific
 
-# PowerPC is big endian so DO NOT USE -DLENDIAN
 DEFS	+=-DAIX -D_BSD
+# PowerPC is big endian so USE -DREVERSE_ENDIAN
+DEFS	+=-DREVERSE_ENDIAN
 AABI    :=
 ABI     :=
 ABINAME :=AIX

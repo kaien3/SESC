@@ -9,11 +9,13 @@
 MACHINE:=
 
 ifeq ($(shell uname -p),i386)
+# x86 is little endian so DO NOT USE -DREVERSE_ENDIAN
 ABINAME :=SunOSi386
-DEFS    +=-DLENDIAN
 else
 ABINAME :=SunOSSparc
 DEFS    +=-DSPARC
+# SPARC is big endian so USE -DREVERSE_ENDIAN
+DEFS    +=-DREVERSE_ENDIAN
 endif
 DEFS    +=-DSUNOS
 AABI    :=

@@ -17,7 +17,8 @@
 #export LD_LIBRARY_PATH=/opt/intel/intel_cc_80/lib
 #export ICC=1
 
-DEFS	+=-DLINUX -DLENDIAN  -DSIMICS -DPOSIX_MEMALIGN
+# x86 is little endian so DO NOT USE -DREVERSE_ENDIAN
+DEFS	+=-DLINUX -DSIMICS -DPOSIX_MEMALIGN
 AABI	:=
 ABI	:=
 ABINAME :=Linux

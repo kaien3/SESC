@@ -522,19 +522,19 @@ uint64_t ThreadContext::getMemValue(RAddr p, unsigned dsize) {
     break;
   case 2:
     value = *((uint16_t *) p);
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
     value = SWAP_SHORT(value);
 #endif      
     break;
   case 4:
     value = *((uint32_t *) p);
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
     value = SWAP_WORD(value);
 #endif      
     break;
   case 8:
     value = *((uint64_t *) p);
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
     value = SWAP_LONG(value);
 #endif      
     break;

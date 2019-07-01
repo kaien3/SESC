@@ -487,7 +487,7 @@ M4_SREAD(lh_op, pthread->getREG(picode, RT),
   if (raddr & 1)
     address_exception_op(picode, pthread);
 #endif
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
 {
   unsigned short val = *(unsigned short *) raddr;
   val = SWAP_SHORT(val);
@@ -505,7 +505,7 @@ M4_SREAD(lhu_op, pthread->getREG(picode, RT),
     address_exception_op(picode, pthread);
 #endif
   pthread->setREG(picode, RT, (int ) *(unsigned short *) raddr);
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
   pthread->setREG(picode, RT, SWAP_SHORT(pthread->getREG(picode, RT)));
 #endif
 })
@@ -558,17 +558,25 @@ M4_READ(lwc3_op, pthread->getWFP(picode, ICODEFT),
 M4_BREAD(lwl_op, pthread->getREG(picode, RT),
 {
   /* read value from memory */
-#ifdef LENDIAN
-  pthread->setREG(picode, RT, mips_lwlLE(pthread->getREG(picode, RT), (char *)raddr));
+#ifdef REVERSE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
+pthread->setREG(picode, RT, mips_lwlBE(pthread->getREG(picode, RT), (char *)raddr));
 #else
-  pthread->setREG(picode, RT, mips_lwlBE(pthread->getREG(picode, RT), (char *)raddr));
+pthread->setREG(picode, RT, mips_lwlLE(pthread->getREG(picode, RT), (char *)raddr));
+#endif
+#else	// !REVERSE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
+pthread->setREG(picode, RT, mips_lwlLE(pthread->getREG(picode, RT), (char *)raddr));
+#else
+pthread->setREG(picode, RT, mips_lwlBE(pthread->getREG(picode, RT), (char *)raddr));
+#endif
 #endif
 })
 
 M4_BREAD(lwr_op, pthread->getREG(picode, RT),
 {
   /* read value from memory */
-#ifdef LENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
   pthread->setREG(picode, RT, mips_lwrLE(pthread->getREG(picode, RT), (char *)raddr));
 #else
   pthread->setREG(picode, RT, mips_lwrBE(pthread->getREG(picode, RT), (char *)raddr));
@@ -638,7 +646,7 @@ M4_WRITE(sc_op,
         address_exception_op(picode, pthread);
 #endif
     /* write value to memory */
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
          *(unsigned int *) raddr = SWAP_WORD(pthread->getREG(picode, RT));
 #else
          *(int *) raddr = pthread->getREG(picode, RT);
@@ -652,7 +660,7 @@ M4_WRITE(sdc1_op,
         address_exception_op(picode, pthread);
 #endif
     /* write value to memory */
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
 {
   I(sizeof(double)==sizeof(unsigned long long));
   unsigned long long v1;
@@ -682,7 +690,7 @@ M4_WRITE(sh_op,
         address_exception_op(picode, pthread);
 #endif
     /* write value to memory */
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
     *(unsigned short *) raddr = SWAP_SHORT(pthread->getREG(picode, RT));
 #else
     *(short *) raddr = pthread->getREG(picode, RT);
@@ -760,7 +768,7 @@ M4_WRITE(sw_op,
     address_exception_op(picode, pthread);
 #endif
     /* write value to memory */
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
   *(unsigned int *) raddr = SWAP_WORD(pthread->getREG(picode, RT));
 #else
   *(int *) raddr = pthread->getREG(picode, RT);
@@ -774,7 +782,7 @@ M4_WRITE(swc1_op,
     address_exception_op(picode, pthread);
 #endif
     /* write value to memory */
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
 {
   I(sizeof(float)==sizeof(unsigned int));
   unsigned int v1;
@@ -804,7 +812,7 @@ M4_WRITE(swl_op,
     address_exception_op(picode, pthread);
 #endif
   /* write value to memory */
-#ifdef LENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
   mips_swlLE(pthread->getREG(picode, RT), (char *)raddr);
 #else
   mips_swlBE(pthread->getREG(picode, RT), (char *)raddr);
@@ -818,7 +826,7 @@ M4_WRITE(swr_op,
     address_exception_op(picode, pthread);
 #endif
     /* write value to memory */
-#ifdef LENDIAN
+#ifdef REVERSE_ENDIAN
   mips_swrLE(pthread->getREG(picode, RT), (char *)raddr);
 #else
   mips_swrBE(pthread->getREG(picode, RT), (char *)raddr);
