@@ -1,0 +1,4 @@
+this directory contains MIPS-EB binary codes.
+Currently, to run this binary programs,
+simulator should be compiled with REVERSE_ENDIAN enabled on little-endian machine.
+(MIPS-LE binary programs will be prepared soon.)
