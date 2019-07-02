@@ -20,10 +20,16 @@
  * along with MINT; see the file COPYING.  If not, write to
  * the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
  */
+//#define DEBUG
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifndef DARWIN
+#include <elf.h>
+#endif
 
 #include "icode.h"
 #include "globals.h"
@@ -154,13 +160,15 @@ elf_read_hdrs(char *objfile)
 
     EndianElf32_Shdr(&shdr);
 
-#ifdef DEBUG_HEADERS
+//#ifdef DEBUG_HEADERS
+#if 1
     printf("name: %d (%s), type %d, flags 0x%x, addr 0x%x offset 0x%x size 0x%x (%d), link %d\n",
            shdr.sh_name, &shstrtab[shdr.sh_name],
            shdr.sh_type, shdr.sh_flags,
            shdr.sh_addr, shdr.sh_offset,
            shdr.sh_size, shdr.sh_size, shdr.sh_link);
 #endif
+
     name = &shstrtab[shdr.sh_name];
     addr = shdr.sh_addr;
     offset = shdr.sh_offset;
@@ -170,6 +178,57 @@ elf_read_hdrs(char *objfile)
     /*  size = (size_orig + 0xf) & ~0xf; */
     size = size_orig;
 
+    if (strcmp(name, ".strtab") == 0) {
+        /* If the mdebug section exists, then use the string table
+         * from there instead.
+         */
+        if (have_mdebug)
+            continue;
+
+        /* allocate space for the string table */
+        table = (char *) malloc(size_orig);
+        fseek(Fobj, offset, SEEK_SET);
+        if (fread(table, size_orig, 1, Fobj) < 1)
+            fatal("elf_read_hdrs: could not read string table\n");
+        Stringtab = table;
+
+        continue;
+    } else if (strcmp(name, ".symtab") == 0) {
+        int32_t i;
+          
+        /* If the mdebug section exists, then use the symbol table
+         * from there instead.
+         */
+        if (have_mdebug)
+            continue;
+          
+        /* allocate space for the symbol table */
+        Symtab = (Elf32_Sym *) malloc(size_orig);
+        fseek(Fobj, offset, SEEK_SET);
+        if (fread(Symtab, size_orig, 1, Fobj) < 1)
+            fatal("elf_read_hdrs: could not read symbol table\n");
+        Numsyms = size_orig / shdr.sh_entsize;
+        for(i=0;i<Numsyms;i++){
+            EndianElf32_Sym(&Symtab[i]);
+        }
+
+        continue;
+    } else if (strcmp(name, ".mdebug") == 0) {
+        /* The .mdebug section looks the same as COFF, starting with
+         * the HDDR structure. The COFF routines that read the namelist
+         * and line number information seek to the file offset
+         * specified in the Fhdr filehdr structure. This does not exist
+         * in ELF so we have to fake it.
+         */
+        Fhdr.f_symptr = offset;
+        read_nmlist();
+        read_linenum();
+
+        continue;
+    } else {
+        //fprintf(stderr,"elf: Unknown section [%s]\n",name);
+    }
+                
     /* This code allows the sections to appear in any order in the object
      * file. The in-memory copies of the .text, .init, and .fini
      * sections must be contiguous, but the sections can be placed
@@ -180,435 +239,120 @@ elf_read_hdrs(char *objfile)
      * read-only data can be placed independently from the other
      * sections.
      */
-    if (strcmp(name, ".text") == 0) {
-      if (Text_start == 0) {
-        Text_seek = offset;
-        Text_start = addr;
-        Text_size = size;
-      } else if (addr != Text_start + Text_size){
-        if( (addr - ( Text_start + Text_size)) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,".text Minor header aligment correction (%x vs %x)\n"
-                  ,addr,(Text_start + Text_size));
-#endif
-          Text_size += size + addr - (Text_start + Text_size);
-        }else
-          fatal(".text section not contiguous with previous section\n");
-      }else
-        Text_size += size;
-    } else if (strcmp(name, ".init") == 0) {
-      if (Text_start == 0) {
-        Text_seek = offset;
-        Text_start = addr;
-        Text_size = size;
-      } else if (addr != Text_start + Text_size){
-        if( (addr - ( Text_start + Text_size)) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,".init Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Text_start + Text_size));
-#endif
-          Text_size += size + addr - (Text_start + Text_size);
-        }else
-          fatal(".init section not contiguous with previous section\n");
-      }else
-        Text_size += size;
-    } else if (strcmp(name, "__libc_freeres_fn") == 0) { 
-      if (Text_start == 0) {
-        Text_seek = offset;
-        Text_start = addr;
-        Text_size = size;
-      } else if (addr != Text_start + Text_size){
-        if( (addr - ( Text_start + Text_size)) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,"__libc_freeres_fn Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Text_start + Text_size));
-#endif
-          Text_size += size + addr - ( Text_start + Text_size);
-        }else
-          fatal("__libc_freeres_fn section not contiguous with .text section\n");
-      }else
-        Text_size += size;
-    } else if (strcmp(name, ".fini") == 0) {
-      if (Text_start == 0) {
-        Text_seek = offset;
-        Text_start = addr;
-        Text_size = size;
-      } else if (addr != Text_start + Text_size){
-        if( (addr - ( Text_start + Text_size)) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,".fini Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Text_start + Text_size));
-#endif
-          Text_size += size + addr - ( Text_start + Text_size);
-        }else
-          fatal(".fini section not contiguous with .text section\n");
-      }else
-        Text_size += size;
-    } else if (strcmp(name, ".eh_frame") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( (addr - ( Data_start + Data_size)) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,".eh_frame Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else
-          fatal(".eh_frame data sections not contiguous\n");
-      }else
-        Data_size += size;
-    } else if (strcmp(name, ".gcc_except_table") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( (addr - ( Data_start + Data_size)) < 256 ){
-#ifdef DEBUG 
-          fprintf(stderr,".gcc_except_table Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else
-          fatal(".gcc_except_table data section not contiguous\n");
-      }else
-        Data_size += size;
-    } else if (strcmp(name, ".ctors") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( (addr - ( Data_start + Data_size)) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,".ctors Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));     
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else
-          fatal(".ctors data sections not contiguous\n");
-      }else
-        Data_size += size;
-    } else if (strcmp(name, ".dtors") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( (addr - ( Data_start + Data_size)) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,".dtors Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else
-          fatal(".dtors data sections not contiguous\n");
-      }else
-        Data_size += size;
-    } else if (strcmp(name, "__libc_subinit") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( (addr - ( Data_start + Data_size)) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,".__libc_subinit Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else
-          fatal(".__libc_subinit data sections not contiguous\n");
-      }else
-        Data_size += size;
-    } else if (strcmp(name, "__libc_atexit") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( (addr - ( Data_start + Data_size)) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,".__libc_atexit Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else
-          fatal(".__libc_atexit data sections not contiguous\n");
-      }else
-        Data_size += size;
-    } else if (strcmp(name, "__libc_subfreeres") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( (addr - ( Data_start + Data_size)) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,"__libc_subfreeres Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else
-          fatal("__libc_subfreeres data sections not contiguous\n");
-      }else
-        Data_size += size;
-    } else if (strcmp(name, "__libc_subinit") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( (addr - ( Data_start + Data_size)) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,"__libc_subinit Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else
-          fatal("__libc_subinit data sections not contiguous\n");
-      }else
-        Data_size += size;
-    } else if (strcmp(name, ".eh_frame") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( (addr - ( Data_start + Data_size)) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,".eh_frame Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else
-          fatal(".eh_frame data sections not contiguous\n");
-      }else
-        Data_size += size;
-    } else if (strcmp(name, ".data") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( (addr - ( Data_start + Data_size)) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,".data Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else
-          fatal(".data data sections not contiguous (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-      }else
-        Data_size += size;
-    } else if (strcmp(name, ".lit8") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( abs((int)(addr - ( Data_start + Data_size))) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,".lit8 Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else
-          fatal(".lit8 data sections not contiguous\n");
-      }else
-        Data_size += size;
-    } else if (strcmp(name, ".lit4") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( (addr - ( Data_start + Data_size)) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,".lit4 Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else
-          fatal(".lit4 data sections not contiguous\n");
-      }else
-        Data_size += size;
-    } else if (strcmp(name, ".sdata") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( abs((int)(addr - ( Data_start + Data_size))) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,".sdata Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else
-          fatal(".sdata data sections not contiguous\n");
-      }else
-        Data_size += size;
-    } else if (strcmp(name, ".got") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( abs((int)(addr - ( Data_start + Data_size))) < 256 ){ /* abs??? */
-#ifdef DEBUG
-          fprintf(stderr,".got Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else{
-          fprintf(stderr,".got (%x vs %lx)\n"
-                  ,addr,( Data_start + Data_size));
-          fatal(".srdata data sections not contiguous\n");
-        }
-      }else
-        Data_size += size;
-    } else if (strcmp(name, ".srdata") == 0) {
-      if (Data_start == 0) {
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-      } else if (addr != Data_start + Data_size){
-        if( abs((int)(addr - ( Data_start + Data_size))) < 256 ){ /* abs??? */
-#ifdef DEBUG
-          fprintf(stderr,".srdata Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Data_start + Data_size));
-#endif
-          Data_size += size + addr - ( Data_start + Data_size);
-        }else{
-          fprintf(stderr,".srdata (%x vs %lx)\n"
-                  ,addr,( Data_start + Data_size));
-                
-          fatal(".srdata data sections not contiguous\n");
-        }                               
-      }else
-        Data_size += size;
-    } else if (strcmp(name, ".rodata") == 0) {
-      /* Allow the read-only data section to be placed in the
-       * midst of the other data sections.
-       * The following hack allows the Rdata section to come first
-       * in the contiguous list of data sections only if the Rdata
-       * section starts at address 0x10000000.
-       */
-      if (Data_start == 0) {/* && addr == 0x10000000) {*/
-        /* Read-only data comes first in the list of contiguous
-         * data sections.
-         */
-        Data_seek = offset;
-        Data_start = addr;
-        Data_size = size;
-        Rdata_start = addr;
-        Rdata_size = size;
-      } else if (Data_start != 0 && addr == Data_start + Data_size) {
-        /* Read-only data is contiguous with the other
-         * data sections, but does not come first.
-         */
-        Data_size += size;
-      } else {
-        /* Read-only data is not contiguous with the other
-         * data sections.
-         */
-        Rdata_seek = offset;
-        Rdata_start = addr;
-        Rdata_size = size;
-      }
-    } else if (strcmp(name, ".sbss") == 0) {
-      if (Bss_start == 0) {
-        Bss_start = addr;
-        Bss_size = size;
-      } else if (addr != Bss_start + Bss_size){
-        if( abs((int)(addr - ( Bss_start + Bss_size))) < 256 ){
-#ifdef DEBUG
-          fprintf(stderr,".sbss Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Bss_start + Bss_size));
-#endif
-          Bss_size = addr - Bss_start + size;
-        }else
-          fatal(".sbss section not contiguous with .bss section\n");
-      }else {
-        Bss_size += size;
-      }
-    } else if (strcmp(name, ".bss") == 0) {
-      if (Bss_start == 0) {
-        Bss_start = addr;
-        Bss_size = size;
-      } else if (addr != Bss_start + Bss_size){
-#ifdef DEBUG
-        fprintf(stderr,"1.bss Minor header aligment correction %d (%x vs %x)\n"
-                ,addr -( Bss_start + Bss_size)
-                ,addr,( Bss_start + Bss_size));
-#endif
-        if( abs((int)(addr - ( Bss_start + Bss_size))) < 4096){
-#ifdef DEBUG
-          fprintf(stderr,".bss Minor header aligment correction (%x vs %x)\n"
-                  ,addr,( Bss_start + Bss_size));
-#endif  
-          Bss_size = addr - Bss_start + size;
-        }else
-          fatal(".bss section not contiguous with .sbss section\n");
-      }else {
-        Bss_size += size;
-      }
-    } else if (strcmp(name, ".strtab") == 0) {
-      /* If the mdebug section exists, then use the string table
-       * from there instead.
-       */
-      if (have_mdebug)
-        continue;
 
-      /* allocate space for the string table */
-      table = (char *) malloc(size_orig);
-      fseek(Fobj, offset, SEEK_SET);
-      if (fread(table, size_orig, 1, Fobj) < 1)
-        fatal("elf_read_hdrs: could not read string table\n");
-      Stringtab = table;
-    } else if (strcmp(name, ".symtab") == 0) {
-      int32_t i;
-          
-      /* If the mdebug section exists, then use the symbol table
-       * from there instead.
-       */
-      if (have_mdebug)
-        continue;
-          
-      /* allocate space for the symbol table */
-      Symtab = (Elf32_Sym *) malloc(size_orig);
-      fseek(Fobj, offset, SEEK_SET);
-      if (fread(Symtab, size_orig, 1, Fobj) < 1)
-        fatal("elf_read_hdrs: could not read symbol table\n");
-      Numsyms = size_orig / shdr.sh_entsize;
-      for(i=0;i<Numsyms;i++){
-        EndianElf32_Sym(&Symtab[i]);
-      }
-    } else if (strcmp(name, ".mdebug") == 0) {
-      /* The .mdebug section looks the same as COFF, starting with
-       * the HDDR structure. The COFF routines that read the namelist
-       * and line number information seek to the file offset
-       * specified in the Fhdr filehdr structure. This does not exist
-       * in ELF so we have to fake it.
-       */
-      Fhdr.f_symptr = offset;
-      read_nmlist();
-      read_linenum();
-    }else{
-      /*                        fprintf(stderr,"elf: Unknown section [%s]\n",name); */
+    if (shdr.sh_type == SHT_PROGBITS) {
+        // possibly text/data section
+
+        if (shdr.sh_flags == 0x6) {
+            //
+            // code section
+            //
+            if (Text_start == 0) {
+                Text_seek = offset;
+                Text_start = addr;
+                Text_size = size;
+            } else if (addr == Text_start + Text_size) {
+                Text_size += size;
+            }
+            else {
+#ifdef DEBUG
+                fprintf(stderr,
+                        "%s section start address mis-match (%x vs %x)"
+                        " => to adjust size\n",
+                        &shstrtab[shdr.sh_name],
+                        addr, (Text_start + Text_size));
+#endif
+                Text_size = addr + size - Text_start;
+            }
+        } else if (shdr.sh_flags == 0x2) {
+            //
+            // data section (read-only)
+            //
+            if (Data_start == 0) {
+                /* Read-only data comes first in the list of contiguous
+                 * data sections.
+                 */
+                Data_seek = offset;
+                Data_start = addr;
+                Data_size = size;
+
+                Rdata_start = addr;
+                Rdata_size = size;
+            } else if (addr == Data_start + Data_size) {
+                /* Read-only data is contiguous with the other
+                 * data sections, but does not come first.
+                 */
+                Data_size += size;
+                Rdata_size += size;
+            } else {
+                Data_size = addr + size - Data_start;
+                Rdata_size =  addr + size - Data_start;
+            }
+        }
+        else if (shdr.sh_flags == 0x3 ||
+                 shdr.sh_flags == 0x10000003) {
+            //
+            // data section (read-write)
+            //
+            if (Data_start == 0) {
+                Data_seek = offset;
+                Data_start = addr;
+                Data_size = size;
+            } else if (addr == Data_start + Data_size) {
+                Data_size += size;
+            } else {
+#ifdef DEBUG
+                fprintf(stderr,
+                        "%s section start address mis-match (%x vs %x)"
+                        " => to adjust size\n",
+                        &shstrtab[shdr.sh_name],
+                        addr, (Data_start + Data_size));
+#endif
+                Data_size = addr + size - Data_start;
+            }
+        }
+
     }
-                
+    else if (shdr.sh_type == SHT_NOBITS) {
+        // possibly bss section
+
+        if (shdr.sh_flags == 0x3) {
+            //
+            // bss section (read-write)
+            //
+            
+            if (Bss_start == 0) {
+                Bss_start = addr;
+                Bss_size = size;
+            } else if (addr == Bss_start + Bss_size) {
+                Bss_size += size;
+            }
+            else {
+#ifdef DEBUG
+                fprintf(stderr,
+                        "%s section start address mis-match (%x vs %x)"
+                        " => to adjust size\n",
+                        &shstrtab[shdr.sh_name],
+                        addr, (Bss_start + Bss_size));
+#endif
+                Bss_size = addr + size - Bss_start;
+            }
+        }
+    }
+
   }
+
+#ifdef  DEBUG
+  printf("text: start=%08lx size=%08lx\n", Text_start, Text_size);
+  printf("data: start=%08lx size=%08lx\n", Data_start, Data_size);
+  printf("rdata: start=%08lx size=%08lx\n", Rdata_start, Rdata_size);
+  printf("bss: start=%08lx size=%08lx\n", Bss_start, Bss_size);
+#endif
+
   if (!have_mdebug)
-    elf_read_nmlist();
+      elf_read_nmlist();
   Text_size = Text_size / 4;
   Text_end = Text_start + Text_size * 4;
-
 }
 
 void

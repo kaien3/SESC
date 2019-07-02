@@ -76,7 +76,7 @@ typedef struct {
 #define STT_SECTION	3
 #define STT_FILE	4
 
-#else
+#else   // !DARWIN
 #include <elf.h>
 #ifndef EF_MIPS_PIC
 #define EF_MIPS_PIC         2 
