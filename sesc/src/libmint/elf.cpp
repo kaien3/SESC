@@ -160,8 +160,7 @@ elf_read_hdrs(char *objfile)
 
     EndianElf32_Shdr(&shdr);
 
-//#ifdef DEBUG_HEADERS
-#if 1
+#ifdef DEBUG_HEADERS
     printf("name: %d (%s), type %d, flags 0x%x, addr 0x%x offset 0x%x size 0x%x (%d), link %d\n",
            shdr.sh_name, &shstrtab[shdr.sh_name],
            shdr.sh_type, shdr.sh_flags,
