@@ -1,0 +1,12 @@
+GCC-based cross compiler for SESC
+
+This is built by using sescutils.tar.bz2, that is aquired from the following Web.
+
+  https://sourceforge.net/projects/sesc/files/
+
+You can run this cross compiler only on cygwin64.
+
+This is tested on cygwin64 3.0.7(0.338/5/3) 2019-04-30.
+
+This cross compiler produces MIPS-EL (little-endian MIPS) Linux binary codes.
+So, the produced binary codes cannot be run on the original SESC simulator, that requires MIPS-EB (big-endian MIPS) Linux binary codes.
