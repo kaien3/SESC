@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 #ifndef N
-#define N       100
+#define N       64
 #endif
 
 typedef struct imatrix {
