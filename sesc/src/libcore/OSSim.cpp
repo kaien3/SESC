@@ -229,9 +229,12 @@ void OSSim::processParams(int32_t argc, char **argv, char **envp)
     fprintf(stderr,"\t-hINT       ; Total amount of heap memory reserved\n");
     fprintf(stderr,"\t-kINT       ; Stack size per thread\n");
     fprintf(stderr,"\t-T          ; Generate trace-file\n");
+
+    /* command-line examples */
     fprintf(stderr,"\n\nExamples:\n");
-    fprintf(stderr,"%s -k65536 -dreportName ./simulation \n",argv[0]);
-    fprintf(stderr,"%s -h0x8000000 -xtest ../tests/crafty <../tests/tt.in\n",argv[0]);
+    fprintf(stderr,"%s -k65536 -dreportName ./prog.bin\n", argv[0]);
+    fprintf(stderr,"%s -h0x8000000 -xtest ../tests/prog/prog.bin <../tests/prog/prog.in\n", argv[0]);
+    fprintf(stderr,"%s ../tests/hello/hello.bin\n", argv[0]);
 #endif // !TRACE_DRIVEN
     exit(0);
   }
