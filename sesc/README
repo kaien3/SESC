@@ -8,7 +8,6 @@ building sesc
 
    Now you can create a directory for the build process:
 
-> cd ../
 > mkdir build
 
    We recommend that you have one build directory per simulator
@@ -20,13 +19,13 @@ building sesc
 
 > cd build
 
-3) configure esesc from build
+3) configure SESC from build
 
-   Run esesc/configure from the build directory (if you don't specify
+   Run configure script from the build directory (if you don't specify
    any options, the default configuration will be built; to see all
    options, type configure --help).
 
-> ../esesc/configure
+> ../configure
 
 4) to build all sesc directories:
 
