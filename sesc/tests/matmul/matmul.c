@@ -48,11 +48,11 @@ imatrix_free(imatrix *m)
 }
 
 void
-imatrix_init_random(imatrix *m, int seed)
+imatrix_init_random(imatrix *m)
 {
     int i, j;
     int n = m->n;
-    srandom(seed);
+
     for (i = 0; i < n; i++) {
         for (j = 0; j < n; j++) {
             m->v[i*n + j] = random() % n;
@@ -119,12 +119,14 @@ main()
     imatrix *B;
     imatrix *C;
 
+    srandom(0);
+
     A = imatrix_alloc(N);
     B = imatrix_alloc(N);
     C = imatrix_alloc(N);
 
-    imatrix_init_random(A, 0);
-    imatrix_init_random(B, 1);
+    imatrix_init_random(A);
+    imatrix_init_random(B);
     /*imatrix_init_symmetry(A);*/
     /*imatrix_init_symmetry(B);*/
     /*imatrix_init_symmetry(C);*/
