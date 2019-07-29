@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 #ifndef N
-#define N       10000
+#define N       30000
 #endif
 
 typedef struct iarray {

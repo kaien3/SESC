@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 #ifndef N
-#define N       4
+#define N       6
 #endif
 
 void
