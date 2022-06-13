@@ -24,7 +24,18 @@ Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 // Diferent compilers have slightly different calling conventions for
 // STL. This file has a cross-compiler implementation.
 
-#ifdef __INTEL_COMPILER
+#ifdef __CLANG_COMPILER
+#include <map>
+#include <unordered_map>
+#include <unordered_set>
+#include <forward_list>
+#include <algorithm>
+#define HASH_MAP       std::unordered_map
+#define HASH_SET       std::unordered_set
+#define HASH_MULTIMAP  std::multimap
+#define HASH           std::hash
+#define SLIST          std::forward_list
+#elif __INTEL_COMPILER
 #include <ext/hash_map>
 #include <ext/hash_set>
 #include <ext/slist>
