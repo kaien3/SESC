@@ -1,12 +1,12 @@
 #################
-# Linux specific
+# macOS specific
 #
-# If MINT_TARGET is defined, it is assumed to have a gcc 3.2 or newer
-# compiler. Valid values are
+# If MINT_TARGET is defined, it is assumed to have a gcc or clang
+# compiler. Valid values are listed 'cc --print-supported-cpus'
 #
-# setenv MINT_TARGET 7450 
+# setenv MINT_TARGET native      (optimization target using GCC)
 #
-# setenv MINT_TARGET g5 
+# setenv MINT_TARGET apple-m1    (only for GCC/Clang compiler)
 #
 
 DEFS	+=-DDARWIN
@@ -14,20 +14,32 @@ AABI	:=
 ABI	:=
 ABINAME :=Darwin
 ##########################################################
-# gcc
+# using GCC (on Homebrew) instead of Clang
 PDEFS	:=-Wall -W -Wno-unused
 # -Weffc++ some day
-CXX	=g++
-CC	=gcc
+#CXX	=g++
+#CC	=gcc
+CXX	=g++-11
+CC	=gcc-11
 
 ifdef DEBUG
 COPTS	:=-O0 -g -fno-inline-functions $(PDEFS)
 LOPTS	:=-O0
 else
-# -fast does not work by default. Dissable some opts
-COPTS	:=-O3 -g1 -finline-functions -finline-limit=1800
+##
+# # -fast does not work by default. Dissable some opts
+# COPTS	:=-O3 -g1 -finline-functions -finline-limit=1800
+# COPTS +=-funroll-loops -fsched-interblock -fomit-frame-pointer
+# LOPTS	:=-O2
+##
+COPTS	:=-O3 -g1 -finline-functions
 COPTS +=-funroll-loops -fsched-interblock -fomit-frame-pointer
-LOPTS	:=-O2
+#COPTS +=-D__CLANG_COMPILER=1
+LOPTS	:=-O3
+#
+#COPTS +=-DUSE_STL_PORT=1
+#COPTS +=-stdlib=libstdc++
+#LOPTS +=-stdlib=libstdc++
 
 ifdef CHUD
 # CHUD OPTIONS
@@ -37,33 +49,39 @@ endif
 endif
 
 # Shared COPTS (do not affect debugging)
-# Plaform Specific
-ifeq ($(shell uname -p), i386)
-# x86 is little endian so DO NOT USE -DREVERSE_ENDIAN
-COPTS +=-mfpmath=sse -mmmx -msse -msse2 -msse3  
-else
-COPTS +=-faltivec -malign-power -mpowerpc-gpopt -force_cpusubtype_ALL
-COPTS +=-falign-loops=16 -falign-jumps=16 -falign-functions=16 -mdynamic-no-pic 
-COPTS +=-falign-jumps-max-skip=15 -falign-loops-max-skip=15 -malign-natural
-# PowerPC is big endian so USE -DREVERSE_ENDIAN
-COPTS +=-DREVERSE_ENDIAN
-endif
+## 
+## # Plaform Specific
+## ifeq ($(shell uname -p), i386)
+## # x86 is little endian so DO NOT USE -DREVERSE_ENDIAN
+## COPTS +=-mfpmath=sse -mmmx -msse -msse2 -msse3  
+## else
+## COPTS +=-faltivec -malign-power -mpowerpc-gpopt -force_cpusubtype_ALL
+## COPTS +=-falign-loops=16 -falign-jumps=16 -falign-functions=16 -mdynamic-no-pic 
+## COPTS +=-falign-jumps-max-skip=15 -falign-loops-max-skip=15 -malign-natural
+## # PowerPC is big endian so USE -DREVERSE_ENDIAN
+## COPTS +=-DREVERSE_ENDIAN
+## endif
+## 
 
 # Machine specific. G4 processor by default
 ifdef MINT_TARGET
 COPTS	+= -mtune=$(MINT_TARGET)
 else 
 ifeq ($(shell uname -p), i386)
-COPTS   += -march=pentium-m -mtune=prescott
+COPTS   += -mtune=i686
 else
-COPTS	+= -mcpu=7450 -mtune=7450
+COPTS	+= -mtune=generic
 endif
 endif
+
 ifdef SESC_SESCTHERM
 XSTDLIBS =-llapack
 endif
+
 # Platform neutral
-COPTS +=-fno-strict-aliasing -freg-struct-return 
+## Clang does not support '-freg-struct-return'
+# COPTS +=-fno-strict-aliasing -freg-struct-return 
+COPTS +=-fno-strict-aliasing
 
 ##############################################################################
 ARFLAGS	:=cr
