@@ -56,6 +56,7 @@ typedef struct {
 
 #define SHT_PROGBITS	1
 #define SHT_STRTAB	3
+#define SHT_NOBITS	8
 
 
 typedef struct {
