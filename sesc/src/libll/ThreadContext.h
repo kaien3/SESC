@@ -2,6 +2,7 @@
 #define THREADCONTEXT_H
 
 #include <stdint.h>
+#include <cstring>
 #include <vector>
 #include <set>
 #include "Snippets.h"

@@ -186,7 +186,7 @@ void AddressSpace::PageDesc::doWrCopy(void){
   if((it!=frameTable.end())&&(it->frame==frame))
     return copyFrame();
 }
-AddressSpace::PageDesc::PageDesc &AddressSpace::PageDesc::operator=(PageDesc &src){
+AddressSpace::PageDesc &AddressSpace::PageDesc::operator=(PageDesc &src){
   flags=src.flags;
   if(frame)
     fail("PageDesc::operator= dst already has a frame!\n");

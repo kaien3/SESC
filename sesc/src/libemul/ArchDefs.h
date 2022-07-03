@@ -2,6 +2,7 @@
 #define ArchDefs_H
 
 #include "ExecMode.h"
+#include "EndianDefs.h"
 
 template<ExecMode mode>
 class ArchRegSizes : public ArchRegSizes<ExecMode(mode&ExecModeArchMask)>{

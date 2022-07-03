@@ -1,6 +1,7 @@
 #if !(defined ADDRESS_SPACE_H)
 #define ADDRESS_SPACE_H
 
+#include <cstring>
 #include <unistd.h>
 #include <vector>
 #include <set>
@@ -125,7 +126,7 @@ namespace MemSys{
 class AddressSpace : public GCObject{
  public:
   typedef SmartPtr<AddressSpace> pointer;
- private:
+// private:
   class SegmentDesc{
   public:
     // Starting adress and length of the segment

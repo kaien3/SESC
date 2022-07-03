@@ -16,10 +16,12 @@
 
 #include <map>
 
+#include <limits.h>
+
 // Get definitions of native file operations and flags
 #include <fcntl.h>
 // Get definition of native types
-#include <linux/types.h>
+//#include <linux/types.h>
 // Get definition of native getdirentries(), dirent64, etc.
 #include <dirent.h>
 // Get native ioctl() and data type definitions for it
