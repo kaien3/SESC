@@ -63,12 +63,12 @@ endif
 ## endif
 ## 
 
-# Machine specific. G4 processor by default
+# Machine specific.
 ifdef MINT_TARGET
 COPTS	+= -mtune=$(MINT_TARGET)
 else 
 ifeq ($(shell uname -p), i386)
-COPTS   += -mtune=i686
+COPTS   += -mtune=native
 else
 COPTS	+= -mtune=generic
 endif
