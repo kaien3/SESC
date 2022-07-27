@@ -61,7 +61,7 @@
 #if (defined DARWIN) || (defined CYGWIN)
 typedef off_t off64_t;
 #else
-#include <stropts.h>
+//#include <stropts.h>
 #endif
 
 #if (defined LINUX) && (defined __i386)
